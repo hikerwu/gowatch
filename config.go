@@ -10,6 +10,15 @@ import (
 
 var configFile = "./gowatch.yml"
 
+type PreCMDSt struct {
+	CMD string `yaml:"cmd"`
+	Args []string `yaml:"args"`
+}
+type GeneParts struct {
+	Model string `yaml:"model"` // 模版文件;
+	Output string `yaml:"output"` //自动生成的文件;
+}
+
 type config struct {
 	//执行的app名字，默认当前目录文字
 	AppName string `yaml:"appname"`
@@ -35,6 +44,12 @@ type config struct {
 	BuildTags string `yaml:"build_tags"`
 	//程序是否自动运行
 	DisableRun bool `yaml:"disable_run"`
+	// generate的路径
+	GenerateDir []*GeneParts `yaml:"generate_dir"`
+	// 总前置cmd命令;
+	PreAllCMDs []*PreCMDSt `yaml:"before_all_cmd"`
+	// 前置cmd命令;
+	PreCMDs []*PreCMDSt `yaml:"before_cmd"`
 }
 
 func parseConfig() *config {

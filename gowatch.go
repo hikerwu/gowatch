@@ -43,6 +43,9 @@ func NewWatcher(paths []string, files []string) {
 				if !checkIfWatchExt(e.Name) {
 					continue
 				}
+				if checkOtherIgnoreFile(e.Name) {
+					continue
+				}
 
 				mt := getFileModTime(e.Name)
 				if t := eventTime[e.Name]; mt == t {
@@ -105,6 +108,94 @@ func getFileModTime(path string) int64 {
 	return fi.ModTime().Unix()
 }
 
+//获取文件修改时间 返回unix时间戳
+func GetFileModTime(path string) int64 {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Errorf("open file error:%s", path)
+		return 0
+	}
+	defer f.Close()
+
+	fi, err := f.Stat()
+	if err != nil {
+		log.Errorf("open file error:%s", path)
+		return 0
+	}
+
+	// "2006-01-02 15:04:05.000000"
+	// log.Infof("%s:%s", path, fi.ModTime().Format("2006-01-02 15:04:05.000000"))
+	return fi.ModTime().UnixNano()
+}
+
+// 自动启动go generate
+func RunGenerate() bool {
+	log.Infof("Start building...\n")
+
+	cmdName := "go"
+
+	var err error
+
+	args := []string{"generate"}
+	for _, one := range cfg.GenerateDir {
+		// 检查文件更新时间
+		// 生成文件比编辑文件新,则不用触发啦;
+		mtime := GetFileModTime(one.Model)
+		otime := GetFileModTime(one.Output)
+		if otime > 0 && mtime < otime {
+			log.Infof("file no need to restart go generate:%d-%d %s\n", mtime, otime, one.Model)
+			continue
+		}
+		args = append(args, one.Model)
+	}
+
+	if len(args) == 1 {
+		// 都被过滤了,所以就当时成功了吧;
+		return true
+	}
+
+	bcmd := exec.Command(cmdName, args...)
+	bcmd.Env = os.Environ()
+	bcmd.Stdout = os.Stdout
+	bcmd.Stderr = os.Stderr
+	log.Infof("Run Args: %s %s", cmdName, strings.Join(args, " "))
+	err = bcmd.Run()
+
+	if err != nil {
+		log.Errorf("============== Generate failed ===================\n")
+		log.Errorf("%+v\n", err)
+		return false
+	}
+	log.Infof("Generate was successful\n")
+	return true
+}
+
+func RunCMD(cmdSt *PreCMDSt) bool {
+	log.Infof("Start running...\n")
+
+	cmdName := cmdSt.CMD
+
+	var err error
+
+	args := []string{}
+	args = append(args, cmdSt.Args...)
+
+	bcmd := exec.Command(cmdName, args...)
+	bcmd.Env = os.Environ()
+	bcmd.Stdout = os.Stdout
+	bcmd.Stderr = os.Stderr
+	log.Infof("Run: %s Args: %s", cmdName, strings.Join(args, " "))
+	err = bcmd.Run()
+
+	if err != nil {
+		log.Errorf("============== %s failed ===================\n", cmdSt.CMD)
+		log.Errorf("%+v\n", err)
+		return false
+	}
+	log.Infof("%s was successful\n", cmdSt.CMD)
+	return true
+}
+
 //Autobuild auto build
 func Autobuild(files []string) {
 	state.Lock()
@@ -114,6 +205,20 @@ func Autobuild(files []string) {
 
 	if err := os.Chdir(currpath); err != nil {
 		log.Errorf("Chdir Error: %+v\n", err)
+		return
+	}
+
+	// 运行前置命令;
+	if len(cfg.PreCMDs) > 0 {
+		for _, cmd := range cfg.PreCMDs {
+			if !RunCMD(cmd) {
+				return
+			}
+		}
+	}
+
+	// go generate
+	if !RunGenerate() {
 		return
 	}
 
@@ -208,6 +313,28 @@ func shouldIgnoreFile(filename string) bool {
 func checkIfWatchExt(name string) bool {
 	for _, s := range cfg.WatchExts {
 		if strings.HasSuffix(name, s) {
+			return true
+		}
+	}
+	return false
+}
+
+// 如果是generate的自动文件,则自动忽略;避免二次编译;
+func checkOtherIgnoreFile(filename string) bool {
+	for _, fl := range cfg.GenerateDir {
+		absP, err := path.Abs(fl.Output)
+		if err != nil {
+			log.Errorf("err =%v", err)
+			log.Errorf("Can not get absolute path of [ %s ]\n", fl.Output)
+			continue
+		}
+		absFilePath, err := path.Abs(filename)
+		if err != nil {
+			log.Errorf("Can not get absolute path of [ %s ]\n", filename)
+			break
+		}
+		if strings.HasPrefix(absFilePath, absP) {
+			log.Infof("Excluding file from watching [ %s ]\n", filename)
 			return true
 		}
 	}

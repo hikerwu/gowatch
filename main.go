@@ -84,6 +84,20 @@ func runApp() {
 		readAppDirectories(path, &paths)
 	}
 
+	// 运行前置命令;
+	if len(cfg.PreAllCMDs) > 0 {
+		for _, cmd := range cfg.PreAllCMDs {
+			if !RunCMD(cmd) {
+				return
+			}
+		}
+	}
+
+	// go generate
+	if !RunGenerate() {
+		return
+	}
+
 	files := []string{}
 	if buildPkg == "" {
 		buildPkg = cfg.BuildPkg

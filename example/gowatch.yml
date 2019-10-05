@@ -23,6 +23,32 @@ output: ./example
 #excluded_paths:
 #    - path
 
+# 注意, 每个目录都需要./开头;
+#generate_dir:
+#    -
+#      model: ./app/library/basexcxerror.go
+#      output: ./app/library/basexcxerror.go
+
+# 总前置cmd命令;
+#before_all_cmd:
+#    -
+#        name:
+#        args:
+#           -
+#           -
+
+# 前置cmd命令;
+#before_cmd:
+#    -
+#        name:
+#        args:
+#           -
+#           -
+#    -
+#        name:
+#        args:
+#           -
+#           -
 #build_tags: ""
 
 disable_run: false
