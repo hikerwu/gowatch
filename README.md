@@ -71,6 +71,26 @@ build_pkg: ""
 # build tags
 build_tags: ""
 
+# 注意, 每个目录都需要./开头;
+generate_dir:
+  -
+    model: ./app/library/base/xcxerror.go
+    output: ./app/library/base/xcxerror_string.go
+
+# 总前置cmd命令，格式和before_cmd相同;
+before_all_cmd:
+# 前置cmd命令;
+before_cmd:
+  -
+    cmd: echo
+    args:
+      - "hello"
+  -
+    cmd: echo
+    args:
+      - "hi we go"
+      - "hi"
+
 # 是否禁止自动运行
 disable_run: false
 
