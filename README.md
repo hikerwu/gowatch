@@ -15,7 +15,7 @@ Go 程序热编译工具，提升开发效率
 ### 安装使用
 
 ```go
-go get github.com/silenceper/gowatch
+go get github.com/hikerwu/gowatch
 ```
 
 安装完成之后，即可使用`gowatch`命令，在当前文件执行:
